@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<link rel="stylesheet" type="text/css" href="./css/layout-default-latest.css" />
+<link rel="stylesheet" type="text/css" href="./themes/redmond/jquery.ui.all.css" />
+<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false&libraries=places"></script>
+<script type="text/javascript" src="./js/jquery-latest.js"></script>
+<script type="text/javascript" src="./js/jquery-ui-latest.js"></script>
+<script type="text/javascript" src="./js/jquery.layout-latest.js"></script>
+<script type="text/javascript" src="./js/jquery.layout.resizePaneAccordions-1.0.js"></script>
+<script type="text/javascript" src="./js/jquery.form.js"></script>
+<style type="text/css">
+      html { height: 100% }
+      body { height: 100%; margin: 0; padding: 0 }
+      #searchtab { text-align: center;}
+      #map_canvas { height: 100%; width: 100%; }
+      .ui-layout-pane {
+         background-color: #fcfdfd;
+      }
+      .ui-layout-resizer {
+         background-color: #dfeffc;
+      }
+      .ui-layout-center ,	/* has content-div */
+	  .ui-layout-east ,	/* has content-div ... */
+	  .ui-layout-east .ui-layout-content { /* content-div has Accordion */
+		padding: 0;
+		overflow: hidden;
+	  }
+      .ui-layout-center P.ui-layout-content {
+		line-height:	1.4em;
+		margin:			0; /* remove top/bottom margins from <P> used as content-div */
+	  }
+      .ui-layout-pane-east .ui-tabs-nav {
+		  /* don't need border or rounded corners - tabs 'fill' the pane */
+		  border-top:	  0;
+		  border-left:	  0;
+		  border-right:	  0;
+		  padding-bottom: 0;
+		  -moz-border-radius: 0;
+		  -webkit-border-radius: 0;
+	   }
+</style>
+<script type="text/javascript">
+        var map;
+        var infowindow;
+        function initialize() {
+          $('body').layout({ 
+              north__resizable:       false,
+              north__closable:        false,
+              north__spacing_open:    0,
+              east__size:             350,
+              east__onresize:         $.layout.callbacks.resizePaneAccordions
+          });
+          $("#search").button({icons: {primary:'ui-icon-search'} });
+          $("#east").tabs().find( ".ui-tabs-nav" ).sortable({ axis: "x" });
+          $("#accordion").accordion({
+               collapsible: true,
+               fillSpace: true,
+               active:    0 // set active accordion-panel
+          });
+          $("#submit").button();
+          $("#slider").slider({
+                range: "min",
+                value: 0,
+                min: 0,
+                max: 100,
+                slide: function(event, ui) {
+                     $("#amount").val(ui.value + "%");
+                }
+          });
+          var mapOptions = {
+            center: new google.maps.LatLng(17.74033553, 83.25067267),
+            zoom:13,
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+          };
+          map = new google.maps.Map(document.getElementById('map_canvas'),
+                    mapOptions);
+          var input = document.getElementById('searchMap');
+          var autocomplete = new google.maps.places.Autocomplete(input);
+          autocomplete.bindTo('bounds', map);
+
+          infowindow = new google.maps.InfoWindow();
+          var marker = new google.maps.Marker({
+              map: map
+          });
+
+          google.maps.event.addListener(map, 'idle', function() {
+               placeMarkers('markers.xml', map.getBounds());
+          });
+ 
+          google.maps.event.addListener(autocomplete, 'place_changed', function() {
+             var place = autocomplete.getPlace();
+             if (place.geometry.viewport) {
+                map.fitBounds(place.geometry.viewport);
+             } else {
+                map.setCenter(place.geometry.location);
+                map.setZoom(17);  // Why 17? Because it looks good.
+             }
+
+             marker.setPosition(place.geometry.location);
+          });
+
+           $("#imageform").ajaxForm();
+      }
+      
+      function placeMarkers(filename, bounds) {
+        $.get(filename, { bounds:bounds.toUrlValue() }, function(xml) {
+           $(xml).find("marker").each(function(){
+            
+                 // create a new LatLng point for the marker
+                 var lat = $(this).find('lat').text();
+                 var lng = $(this).find('lng').text();
+                 var hm = $(this).find('hm').text();
+                 var point = new google.maps.LatLng(parseFloat(lat),parseFloat(lng));
+
+                 var marker = new google.maps.Marker({
+                     position: point,
+                     map: map
+                 });
+ 
+                 if (parseFloat(hm) > 50.0) {
+                    iconFile = 'http://maps.google.com/mapfiles/ms/icons/green-dot.png';
+                    marker.setIcon(iconFile);
+                 }
+
+                 google.maps.event.addListener(marker, 'click', function() {
+                     infowindow.close();
+                     $.ajax({ type: 'GET', 
+                              url: 'displaypic', 
+                              data: { latlng:point.toUrlValue() },
+                              success: function(response) {
+                                infowindow.setContent(response);
+                                infowindow.open(map, marker);
+                              }
+                     });
+                 });
+           });
+        });
+      }
+ 
+      function search() {
+         var address = document.getElementById("searchMap").value;
+         geocoder.geocode({
+              'address': address,
+              'partialmatch': true
+         }, geocodeResult);
+      }
+
+      function geocodeResult(results, status) {
+          var marker = new google.maps.Marker({
+              map: map
+          });
+          if (status == 'OK' && results.length > 0) {
+             map.fitBounds(results[0].geometry.viewport);
+             marker.setPosition(results[0].geometry.location);
+          } else {
+              alert("Geocode was not successful for the following reason: " + status);
+          }
+      }
+
+      function findlatlng(value) {
+         List<Address> foundGeocode = null;
+         foundGeocode = new Geocoder(this).getFromLocationName(value, 1);
+         document.getElementById('latitude').value = foundGeocode.get(0).getLatitude();
+         document.getElementById('longitude').value = foundGeocode.get(0).getLongitude(); 
+      }
+      google.maps.event.addDomListener(window, 'load', initialize);
+</script>
+</head>
+<body>
+<div class="ui-layout-north  ui-widget-content" style="display: none;">
+   <div id="searchtab">
+      <input id="searchMap" type="text" size="50" style="font-size:17px; border:2px solid #dfeffc"/>
+      <button id="search" onclick="search()" style="font-size:.8em">Search</button>
+   </div>
+</div>
+<div class="ui-layout-center" style="display: none;">
+   <div id="map_canvas"></div>
+</div>
+<div id="east" class="ui-layout-east" style="display: none;">
+  <ul style="-moz-border-radius-bottomleft: 0; -moz-border-radius-bottomright: 0;">
+    <li><a href="#tab_1"><span>Public</span></a></li>
+    <li><a href="#tab_2"><span>Login</span></a></li>
+    <li><a href="#tab_3"><span>Upload</span></a></li>
+  </ul>
+  <div class="ui-layout-content ui-widget-content" style="border-top: 0;">
+    <div id="tab_1">
+      <div id="accordion" class="basic">
+        <h3><a href="#">5 min</a></h3><div></div>
+        <h3><a href="#">10 min</a></h3><div></div>
+        <h3><a href="#">15 min</a></h3><div></div>
+        <h3><a href="#">20 min</a></h3><div></div>
+     </div>
+   </div>
+   <div id="tab_2">
+    Username <input type="text" size="30" style="border:1px solid #dfeffc"/><p></p>
+    Password <input type="text" size="30" style="border:1px solid #dfeffc"/><p></p>
+    <button id="submit" onclick="" style="font-size:.8em">submit</button>
+   </div>
+   <div id="tab_3">
+   <form id="imageform" action="/formupload" enctype="multipart/form-data" method="post">
+    <p>
+     Latitude <input type="text" name="lat" size="30" style="border:1px solid #dfeffc"/>
+    </p>
+    <p>
+     Longitude <input type="text" name="lng" size="30" style="border:1px solid #dfeffc"/> 
+    </p>
+    <p>
+      <label for="amount">Happy Meter:</label>
+      <input type="text" id="amount" name="hm" style="border:0; width:50px; background-color:transparent"/>
+      <div id="slider"></div>
+    </p>
+    <input id="image" type="file" name="upload" multiple="multiple" style="background-color: #dfeffc; width:300px; color:#2e6e9e;"/>
+    <p></p>
+    <input type="submit" value="submit" style="font-size:.8em"></form> 
+   </div>
+ </div>
+</div>
+</body>
+</html>
