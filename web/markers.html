@@ -50,7 +50,6 @@
               north__closable:        false,
               north__spacing_open:    0,
               east__size:             350,
-              east__onresize:         $.layout.callbacks.resizePaneAccordions
           });
           $("#search").button({icons: {primary:'ui-icon-search'} });
           $("#east").tabs().find( ".ui-tabs-nav" ).sortable({ axis: "x" });
@@ -60,6 +59,7 @@
                active:    0 // set active accordion-panel
           });
           $("#submit").button();
+          $("#submitform").button();
           $("#slider").slider({
                 range: "min",
                 value: 0,
@@ -70,7 +70,7 @@
                 }
           });
           var mapOptions = {
-            center: new google.maps.LatLng(17.74033553, 83.25067267),
+            center: new google.maps.LatLng(37.400563,-122.142138),
             zoom:13,
             mapTypeId: google.maps.MapTypeId.ROADMAP
           };
@@ -79,14 +79,14 @@
           var input = document.getElementById('searchMap');
           var autocomplete = new google.maps.places.Autocomplete(input);
           autocomplete.bindTo('bounds', map);
-
+         
           infowindow = new google.maps.InfoWindow();
           var marker = new google.maps.Marker({
               map: map
           });
 
           google.maps.event.addListener(map, 'idle', function() {
-               placeMarkers('markers.xml', map.getBounds());
+               refreshPage();
           });
  
           google.maps.event.addListener(autocomplete, 'place_changed', function() {
@@ -102,10 +102,19 @@
           });
 
            $("#imageform").ajaxForm();
+           
+           setInterval(refreshPage, 30000);
+
+           function stopRKey(evt) { 
+                var evt = (evt) ? evt : ((event) ? event : null); 
+                var node = (evt.target) ? evt.target : ((evt.srcElement) ? evt.srcElement : null); 
+                if ((evt.keyCode == 13) && (node.type=="text"))  {return false;} 
+           } 
+           document.onkeypress = stopRKey;
       }
       
       function placeMarkers(filename, bounds) {
-        $.get(filename, { bounds:bounds.toUrlValue() }, function(xml) {
+        $.get(filename, { bounds:bounds }, function(xml) {
            $(xml).find("marker").each(function(){
             
                  // create a new LatLng point for the marker
@@ -125,20 +134,28 @@
                  }
 
                  google.maps.event.addListener(marker, 'click', function() {
-                     infowindow.close();
-                     $.ajax({ type: 'GET', 
-                              url: 'displaypic', 
-                              data: { latlng:point.toUrlValue() },
-                              success: function(response) {
-                                infowindow.setContent(response);
-                                infowindow.open(map, marker);
-                              }
-                     });
+                     display_photo(point.toUrlValue);
                  });
            });
         });
       }
- 
+   
+      function display_photo(bounds) {
+         $.ajax({
+             type: 'GET',
+             url:  'displaypic',
+             data: { bounds: bounds },
+             success: function(html) {
+                 $("#displayphoto").html(html);
+             }
+         });               
+      }
+
+      function refreshPage() {
+          placeMarkers('markers.xml', map.getBounds().toUrlValue());
+          display_photo(map.getBounds().toUrlValue());
+      }
+          
       function search() {
          var address = document.getElementById("searchMap").value;
          geocoder.geocode({
@@ -159,17 +176,12 @@
           }
       }
 
-      function findlatlng(value) {
-         List<Address> foundGeocode = null;
-         foundGeocode = new Geocoder(this).getFromLocationName(value, 1);
-         document.getElementById('latitude').value = foundGeocode.get(0).getLatitude();
-         document.getElementById('longitude').value = foundGeocode.get(0).getLongitude(); 
-      }
-      google.maps.event.addDomListener(window, 'load', initialize);
+     google.maps.event.addDomListener(window, 'load', initialize);
 </script>
 </head>
 <body>
-<div class="ui-layout-north  ui-widget-content" style="display: none;">
+<div class="ui-layout-north  ui-widget-content" style="display:none; overflow:hidden">
+   <img src="./images/logo.png"  style="float:left" height="50"> 
    <div id="searchtab">
       <input id="searchMap" type="text" size="50" style="font-size:17px; border:2px solid #dfeffc"/>
       <button id="search" onclick="search()" style="font-size:.8em">Search</button>
@@ -186,12 +198,7 @@
   </ul>
   <div class="ui-layout-content ui-widget-content" style="border-top: 0;">
     <div id="tab_1">
-      <div id="accordion" class="basic">
-        <h3><a href="#">5 min</a></h3><div></div>
-        <h3><a href="#">10 min</a></h3><div></div>
-        <h3><a href="#">15 min</a></h3><div></div>
-        <h3><a href="#">20 min</a></h3><div></div>
-     </div>
+    <div id="displayphoto"></div>
    </div>
    <div id="tab_2">
     Username <input type="text" size="30" style="border:1px solid #dfeffc"/><p></p>
@@ -204,7 +211,7 @@
      Latitude <input type="text" name="lat" size="30" style="border:1px solid #dfeffc"/>
     </p>
     <p>
-     Longitude <input type="text" name="lng" size="30" style="border:1px solid #dfeffc"/> 
+     Longitude <input type="text" name="lng" size="30" style="border:1px solid #dfeffc"/>
     </p>
     <p>
       <label for="amount">Happy Meter:</label>
@@ -213,7 +220,7 @@
     </p>
     <input id="image" type="file" name="upload" multiple="multiple" style="background-color: #dfeffc; width:300px; color:#2e6e9e;"/>
     <p></p>
-    <input type="submit" value="submit" style="font-size:.8em"></form> 
+    <input id="submitform" type="submit" value="submit" style="font-size:.8em"></form> 
    </div>
  </div>
 </div>
