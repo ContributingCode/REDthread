@@ -95,15 +95,16 @@
                 map.fitBounds(place.geometry.viewport);
              } else {
                 map.setCenter(place.geometry.location);
-                map.setZoom(17);  // Why 17? Because it looks good.
+                map.setZoom(13); 
              }
 
              marker.setPosition(place.geometry.location);
+             marker.setIcon('http://maps.google.com/mapfiles/ms/icons/yellow-dot.png');
           });
 
            $("#imageform").ajaxForm();
            
-           setInterval(refreshPage, 30000);
+           setInterval(refreshPage, 5000);
 
            function stopRKey(evt) { 
                 var evt = (evt) ? evt : ((event) ? event : null); 
@@ -198,7 +199,7 @@
   </ul>
   <div class="ui-layout-content ui-widget-content" style="border-top: 0;">
     <div id="tab_1">
-    <div id="displayphoto"></div>
+    <div id="displayphoto" style="overflow:auto"></div>
    </div>
    <div id="tab_2">
     Username <input type="text" size="30" style="border:1px solid #dfeffc"/><p></p>
