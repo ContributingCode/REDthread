@@ -43,7 +43,7 @@ var app = express.createServer();
 app.use(express.bodyParser({uploadDir:process.env.PWD || '/tmp'}));
 app.use(app.router);
 var db;
-require('mongodb').connect(mongourl, function(err, dbobj) { db = dbobj});
+Db.connect(mongourl, function(err, dbobj) { db = dbobj});
 
 fs.readFile('./markers.html', function (err, html) {
      if (err) {
