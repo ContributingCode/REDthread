@@ -184,12 +184,15 @@ app.post('/formupload',function(req,res) {
             happymeter = 49;
         }
         if (lat == 0) {
-            location = "VMware Inc., Palo Alto, CA";
+            location = "VMware";
             lat = 37.400563;
             lng = -122.142138;
             if (happymeter == 0)
                 happymeter = 51;
         }
+	if(location==null){
+	    location= "Default";
+	}
         if (req.files.upload) {
             gridStore.open(function(err, gridStore) {
                 gridStore.writeFile(req.files.upload.path, function(err, doc) {
